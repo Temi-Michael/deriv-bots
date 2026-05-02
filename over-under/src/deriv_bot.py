@@ -245,9 +245,10 @@ class DerivBot:
                     self.current_stake = round(self.current_stake * self.martingale_multiplier, 2)
                     print(f"{Fore.MAGENTA}Martingale Level {self.current_martingale_level} - Next Stake: ${self.current_stake}{Style.RESET_ALL}")
                 else:
-                    print(f"{Fore.RED}Max Martingale Level Reached. Resetting Stake.{Style.RESET_ALL}")
-                    self.current_stake = self.initial_stake
-                    self.current_martingale_level = 0
+                    print(f"\n{Fore.RED}CRITICAL: Max Martingale Level ({self.max_martingale_level}) Reached! Stopping bot to prevent account liquidation.{Style.RESET_ALL}")
+                    self.is_running = False
+                    self.current_contract_id = None
+                    return
 
         self.session_pl += profit
         self.run_count += 1

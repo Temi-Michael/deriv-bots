@@ -29,7 +29,17 @@ async def main():
         ]
     ).ask()
 
-    tick_exit_count = questionary.text("Tick Exit Count (auto-sell after N ticks):", default="5").ask()
+    exit_mode = questionary.select(
+        "Exit Strategy:",
+        choices=[
+            questionary.Choice("Static Tick Count (Auto-sell after N ticks)", 'static'),
+            questionary.Choice("Dynamic Algorithmic (Auto-sell if ADX spikes > 25)", 'dynamic')
+        ]
+    ).ask()
+
+    tick_exit_count = "0"
+    if exit_mode == 'static':
+        tick_exit_count = questionary.text("Tick Exit Count (auto-sell after N ticks):", default="5").ask()
 
     stake = questionary.text("Initial Stake ($):", default="1.0").ask()
     take_profit = questionary.text("Take Profit ($):", default="10.0").ask()
@@ -52,6 +62,7 @@ async def main():
         take_profit=take_profit,
         stop_loss=stop_loss,
         tick_exit_count=tick_exit_count,
+        exit_mode=exit_mode,
         martingale_mult=martingale_mult,
         max_martingale_level=max_martingale
     )

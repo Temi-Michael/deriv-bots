@@ -12,7 +12,7 @@ import ta
 init(autoreset=True)
 
 class AccumulatorBot:
-    def __init__(self, token, app_id, symbol, growth_rate, stake, take_profit, stop_loss, tick_exit_count, martingale_mult, max_martingale_level):
+    def __init__(self, token, app_id, symbol, growth_rate, stake, take_profit, stop_loss, tick_exit_count, exit_mode, martingale_mult, max_martingale_level):
         self.token = token
         self.app_id = app_id
         self.symbol = symbol
@@ -22,6 +22,7 @@ class AccumulatorBot:
         self.take_profit = float(take_profit)
         self.stop_loss = float(stop_loss)
         self.tick_exit_count = int(tick_exit_count)
+        self.exit_mode = exit_mode # 'static' or 'dynamic'
 
         self.martingale_mult = float(martingale_mult)
         self.max_martingale_level = int(max_martingale_level)
@@ -181,13 +182,20 @@ class AccumulatorBot:
             self.current_tick_count = contract.get("tick_count", self.current_tick_count + 1)
             profit = float(contract.get("profit", 0.0))
 
-            # Print heartbeat/status
-            print(f"\r{Fore.YELLOW}Tick: {self.current_tick_count}/{self.tick_exit_count} | Current Profit: ${profit:.2f}{Style.RESET_ALL}", end="", flush=True)
-
             # Auto-Exit Logic
-            if self.current_tick_count >= self.tick_exit_count:
-                print(f"\n{Fore.CYAN}Target tick count reached. Sending SELL request...{Style.RESET_ALL}")
-                await self.send({"sell": self.current_contract_id, "price": 0}) # price 0 sells at market price
+            if self.exit_mode == 'static':
+                print(f"\r{Fore.YELLOW}Tick: {self.current_tick_count}/{self.tick_exit_count} | Current Profit: ${profit:.2f}{Style.RESET_ALL}", end="", flush=True)
+                if self.current_tick_count >= self.tick_exit_count:
+                    print(f"\n{Fore.CYAN}Target tick count reached. Sending SELL request...{Style.RESET_ALL}")
+                    await self.send({"sell": self.current_contract_id, "price": 0})
+            else:
+                # Dynamic Algorithmic Exit (ADX > 25 indicates volatility spike)
+                adx = self.calculate_indicators()
+                adx_display = f"{adx:.2f}" if adx is not None else "N/A"
+                print(f"\r{Fore.YELLOW}Tick: {self.current_tick_count} | Profit: ${profit:.2f} | ADX: {adx_display}{Style.RESET_ALL}", end="", flush=True)
+                if adx is not None and adx > 25:
+                    print(f"\n{Fore.CYAN}Volatility spike detected (ADX > 25). Sending algorithmic SELL request to lock in profit...{Style.RESET_ALL}")
+                    await self.send({"sell": self.current_contract_id, "price": 0})
         else:
             print() # newline after tick tracking
             await self.handle_contract_close(contract)

@@ -14,6 +14,7 @@ class TestAccumulatorBot(unittest.IsolatedAsyncioTestCase):
             take_profit=10.0,
             stop_loss=10.0,
             tick_exit_count=5,
+            exit_mode='static',
             martingale_mult=2.0,
             max_martingale_level=3
         )
@@ -46,6 +47,24 @@ class TestAccumulatorBot(unittest.IsolatedAsyncioTestCase):
 
         # It should send the sell request because tick_count (5) >= tick_exit_count (5)
         self.bot.send.assert_called_with({"sell": 12345, "price": 0})
+
+    async def test_dynamic_algorithmic_exit(self):
+        self.bot.exit_mode = 'dynamic'
+        self.bot.current_contract_id = 999
+        self.bot.current_tick_count = 2
+
+        # Volatility spikes (ADX > 25)
+        self.bot.calculate_indicators = lambda: 28.0
+
+        contract_update = {
+            "is_sold": 0,
+            "tick_count": 3,
+            "profit": 1.50
+        }
+        await self.bot.handle_open_contract_update(contract_update)
+
+        # It should sell to lock in profit before volatility causes a knockout
+        self.bot.send.assert_called_with({"sell": 999, "price": 0})
 
 if __name__ == "__main__":
     unittest.main()

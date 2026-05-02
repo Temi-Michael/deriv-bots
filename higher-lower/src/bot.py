@@ -93,15 +93,20 @@ class HigherLowerBot:
             return data
         return {}
 
-    async def fetch_historical_candles(self):
-        print(f"{Fore.YELLOW}Fetching historical M1 candles for Bollinger Bands...{Style.RESET_ALL}")
+    async def fetch_historical_data(self):
+        granularity = 60
+        if self.duration_unit == 'm' and self.duration >= 5:
+            granularity = min([g for g in [60, 120, 180, 300, 600, 900, 1800, 3600] if g <= (self.duration * 60)], default=60)
+
+        print(f"{Fore.YELLOW}Fetching historical candles (Granularity: {granularity}s) for Bollinger Bands...{Style.RESET_ALL}")
+        self.current_granularity = granularity
         req = {
             "ticks_history": self.symbol,
             "adjust_start_time": 1,
             "count": 60,
             "end": "latest",
             "style": "candles",
-            "granularity": 60
+            "granularity": self.current_granularity
         }
         await self.send(req)
 
@@ -112,7 +117,7 @@ class HigherLowerBot:
             "count": 1,
             "end": "latest",
             "style": "candles",
-            "granularity": 60,
+            "granularity": getattr(self, 'current_granularity', 60),
             "subscribe": 1
         }
         await self.send(req)
@@ -215,7 +220,7 @@ class HigherLowerBot:
              self.is_running = False
 
     async def main_loop(self):
-        await self.fetch_historical_candles()
+        await self.fetch_historical_data()
 
         try:
             while self.is_running:

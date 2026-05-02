@@ -93,16 +93,26 @@ class RiseFallBot:
             return data
         return {}
 
-    async def fetch_historical_candles(self):
-        # Fetch 60 candles of 1 minute (60 seconds)
-        print(f"{Fore.YELLOW}Fetching historical M1 candles for indicators...{Style.RESET_ALL}")
+    async def fetch_historical_data(self):
+        # If trading ticks or seconds (short duration), use tick history (converted to pseudo-candles or tick arrays)
+        # However, EMA and RSI mathematically require uniform periods (OHLC).
+        # For tick trades, Deriv does not offer tick-level OHLC, so we will use 1-minute (60s) candles for analysis
+        # regardless of duration to establish the macro trend direction.
+
+        # We will dynamically adapt the granularity if the user selected minutes.
+        granularity = 60
+        if self.duration_unit == 'm' and self.duration >= 5:
+            granularity = min([g for g in [60, 120, 180, 300, 600, 900, 1800, 3600] if g <= (self.duration * 60)], default=60)
+
+        print(f"{Fore.YELLOW}Fetching historical candles (Granularity: {granularity}s) to determine macro trend...{Style.RESET_ALL}")
+        self.current_granularity = granularity
         req = {
             "ticks_history": self.symbol,
             "adjust_start_time": 1,
             "count": 60,
             "end": "latest",
             "style": "candles",
-            "granularity": 60
+            "granularity": self.current_granularity
         }
         await self.send(req)
 
@@ -113,7 +123,7 @@ class RiseFallBot:
             "count": 1,
             "end": "latest",
             "style": "candles",
-            "granularity": 60,
+            "granularity": getattr(self, 'current_granularity', 60),
             "subscribe": 1
         }
         await self.send(req)
@@ -223,7 +233,7 @@ class RiseFallBot:
              self.is_running = False
 
     async def main_loop(self):
-        await self.fetch_historical_candles()
+        await self.fetch_historical_data()
 
         try:
             while self.is_running:

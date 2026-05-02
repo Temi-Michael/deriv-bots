@@ -83,6 +83,19 @@ class TestDerivBot(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.bot.current_stake, 6.25) # 2.5 * 2.5 = 6.25 (rounded)
         self.assertEqual(self.bot.session_pl, -3.5)
 
+        # Third loss
+        contract = {"profit": -6.25, "status": "lost"}
+        await self.bot.handle_contract_close(contract)
+
+        self.assertEqual(self.bot.current_martingale_level, 3)
+        self.assertEqual(self.bot.current_stake, 15.62)
+
+        # Fourth loss (Max level reached, bot should stop)
+        self.bot.is_running = True
+        contract = {"profit": -15.62, "status": "lost"}
+        await self.bot.handle_contract_close(contract)
+        self.assertFalse(self.bot.is_running)
+
     async def test_martingale_win_reset(self):
         self.bot.current_stake = 6.25
         self.bot.current_martingale_level = 2
